@@ -1,3 +1,6 @@
+; git add .
+; git commit -m "ok"
+
 ; TODO:
 ; Draw the ball
 ; Make it so that the game starts paused. The menu button (or something else) starts all movements
