@@ -1,6 +1,6 @@
-rgblink = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgblink.exe
-rgbfix = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgbfix.exe
-rgbasm = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgbasm.exe
+rgblink = C:\Users\willi\Visual Studio Code\Pong\Z80-Assembly-Pong\rgbds-0.8.0-win64\rgblink.exe
+rgbfix = C:\Users\willi\Visual Studio Code\Pong\Z80-Assembly-Pong\rgbds-0.8.0-win64\rgbfix.exe
+rgbasm = C:\Users\willi\Visual Studio Code\Pong\Z80-Assembly-Pong\rgbds-0.8.0-win64\rgbasm.exe
 
 filename = pong
 
