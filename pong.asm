@@ -9,6 +9,9 @@
 ; Add sounds when pressing Start
 ; Finish ball y collision
 
+; TODO:
+; Every 2 or 3 collisions with ball, dont flip y velocity? Adds some variety`?
+
 INCLUDE "hardware.inc"
 
 ; Define constants
@@ -18,7 +21,7 @@ DEF PADDLE_HEIGHT EQU 1 ; Amount of tiles that it will stretch out, from the cen
 DEF GAME_STATE EQU $C006
 
 DEF GAME_PAUSED EQU 0
-DEF OPPONENT_MODE EQU 1 ; Opponent bit active = human
+DEF OPPONENT_MODE EQU 0 ; Opponent bit active = human
 
 ; Position addresses
 DEF PADDLEPOS1 EQU $C000
@@ -49,26 +52,26 @@ DEF BALL_EVERY_FRAME EQU 5
 SECTION "graphics", ROM0
 paddle:
 opt g.123
-    dw `.......3
-    dw `.......3
-    dw `.......3
-    dw `.......3
-    dw `.......3
-    dw `.......3
-    dw `.......3
-    dw `.......3
+    dw `......33
+    dw `......33
+    dw `......33
+    dw `......33
+    dw `......33
+    dw `......33
+    dw `......33
+    dw `......33
 .end:
 
 paddle2: ; We could just flip paddle to save some ROM space, but no
 opt g.123
-    dw `3.......
-    dw `3.......
-    dw `3.......
-    dw `3.......
-    dw `3.......
-    dw `3.......
-    dw `3.......
-    dw `3.......
+    dw `33......
+    dw `33......
+    dw `33......
+    dw `33......
+    dw `33......
+    dw `33......
+    dw `33......
+    dw `33......
 .end:
 
 ball:
@@ -227,10 +230,27 @@ gameLoop:
     bit GAME_PAUSED, a
     jr nz, gameLoop ; Skip drawing if paused
 
+
     call ballPhysics
+    call moveAI
     call updateScreen
 
     jr gameLoop
+
+moveAI:
+    ld a, [GAME_STATE]
+    bit 1, a
+    jr z, .pass ; AI player
+
+    ret
+.pass:
+    call storeOldPad2Pos ; Important. Store before updating
+
+    ; AI is in control
+    ld a, [BALL_Y]
+    ld [PADDLEPOS2], a
+
+    ret
 
 ballPhysics:
     call storeOldBallPos
@@ -269,6 +289,7 @@ checkBallCollisions:
     ; gt
     ld a, [PADDLEPOS1]
     add a, PADDLE_HEIGHT
+    add a, PADDLE_HEIGHT
     add a, PADDLE_HEIGHT ; dont know why this is required
     ld b, a
 
@@ -294,6 +315,47 @@ checkBallCollisions:
     ret
 
 .checkPaddle2:
+; Check X
+    ld a, [BALL_X]
+    cp 19
+    jr nz, .screenCollision
+
+    ; Check Y
+    ld a, [PADDLEPOS2]
+    ;sub PADDLE_HEIGHT
+    ld b, a
+    
+    ld a, [BALL_Y]
+    cp b ; If Y less or greater
+    jr c, .screenCollision
+
+    ; gt
+    ld a, [PADDLEPOS2]
+    add a, PADDLE_HEIGHT
+    add a, PADDLE_HEIGHT
+    add a, PADDLE_HEIGHT ; dont know why this is required
+    ld b, a
+
+    ld a, [BALL_Y]
+    cp b
+    jr nc, .screenCollision
+
+    ld a, [BALL_X + OLD_POS_OFFSET]
+    ld [BALL_X], a
+    ld a, [BALL_Y + OLD_POS_OFFSET]
+    ld [BALL_Y], a
+
+    ld a, [BALLVEL_Y]
+    cpl
+    inc a
+    ld [BALLVEL_Y], a
+
+    ld a, [BALLVEL_X]
+    cpl
+    inc a
+    ld [BALLVEL_X], a
+
+    ret
 
 .screenCollision:
 
@@ -574,7 +636,7 @@ drawPaddles:
 
     add hl, de
 
-    ld a, 1
+    ld a, PADDLE_TWO
     ld [hl], a
 
     dec b
