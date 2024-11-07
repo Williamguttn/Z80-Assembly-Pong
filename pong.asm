@@ -23,6 +23,7 @@ DEF GAME_STATE EQU $C006
 ; Bit numbers
 DEF GAME_PAUSED EQU 0
 DEF OPPONENT_MODE EQU 1 ; Opponent bit active = human
+DEF SOUND_PLAYING EQU 2
 
 ; Position addresses
 DEF PADDLEPOS1 EQU $C000
@@ -32,6 +33,7 @@ DEF BALL_X EQU $C002
 DEF BALL_Y EQU $C003
 DEF BALLVEL_X EQU $C004
 DEF BALLVEL_Y EQU $C005
+DEF BOUNCE_COUNTER EQU $C008
 
 DEF OLD_POS_OFFSET EQU $100
 
@@ -42,6 +44,8 @@ DEF EMPTY_TILE EQU 2
 DEF BALL_TILE EQU 3
 
 ; Joypad
+DEF A_BTN EQU 0
+DEF B_BTN EQU 1
 DEF D_UP EQU 2
 DEF D_DOWN EQU 3
 DEF START_BTN EQU 3
@@ -50,6 +54,7 @@ DEF SELECT_BTN EQU 2
 ; Misc
 DEF FRAME_COUNTER EQU $C007
 DEF BALL_EVERY_FRAME EQU 5
+DEF SOUND_TIMER EQU $C009
 
 SECTION "graphics", ROM0
 paddle:
@@ -95,6 +100,10 @@ SECTION "entry", ROM0[$100]
     jp Start
 
 SECTION "main", ROM0[$150]
+PreStart:
+    ; Game state
+    ld a, 1 ; Start paused
+    ld [GAME_STATE], a
 Start:
     ; prepareData will initialize ball and paddle positions
     call prepareData
@@ -129,9 +138,11 @@ prepareData:
     ld a, 1
     ld [BALLVEL_Y], a ; Ball Y velocity
 
-    ; Game state
-    ld a, 1 ; Start paused
-    ld [GAME_STATE], a
+    xor a
+    ld [BOUNCE_COUNTER], a
+
+    ld a, 10
+    ld [SOUND_TIMER], a
 
     ret
 
@@ -234,7 +245,13 @@ gameLoop:
 
 
     call ballPhysics
-    call moveAI
+
+    ; Move AI only if ai mode is on
+    ld a, [GAME_STATE]
+    bit OPPONENT_MODE, a
+    call z, moveAI
+
+    call updateSoundTimer
     call updateScreen
 
     jr gameLoop
@@ -251,6 +268,26 @@ moveAI:
     ; AI is in control
     ld a, [BALL_Y]
     ld [PADDLEPOS2], a
+
+    ret
+
+handleBounceCounter: ; This mostly creates an illusion of variety
+    ld a, [BOUNCE_COUNTER]
+    cp 3
+    call z, .flipYVel
+
+    inc a
+    ld [BOUNCE_COUNTER], a
+
+    ret
+.flipYVel:
+    ld a, [BALLVEL_Y]
+    cpl
+    inc a
+    ld [BALLVEL_Y], a
+
+    xor a
+    ld [BOUNCE_COUNTER], a
 
     ret
 
@@ -276,12 +313,12 @@ checkBallCollisions:
 .checkPaddle1:
     ; Check X
     ld a, [BALL_X]
-    cp 0
+    or a
     jr nz, .checkPaddle2
 
     ; Check Y
     ld a, [PADDLEPOS1]
-    ;sub PADDLE_HEIGHT
+    sub PADDLE_HEIGHT
     ld b, a
     
     ld a, [BALL_Y]
@@ -304,10 +341,12 @@ checkBallCollisions:
     ld a, [BALL_Y + OLD_POS_OFFSET]
     ld [BALL_Y], a
 
-    ld a, [BALLVEL_Y]
-    cpl
-    inc a
-    ld [BALLVEL_Y], a
+    call handleBounceCounter
+
+    ;ld a, [BALLVEL_Y]
+    ;cpl
+    ;inc a
+    ;ld [BALLVEL_Y], a
 
     ld a, [BALLVEL_X]
     cpl
@@ -324,7 +363,7 @@ checkBallCollisions:
 
     ; Check Y
     ld a, [PADDLEPOS2]
-    ;sub PADDLE_HEIGHT
+    sub PADDLE_HEIGHT
     ld b, a
     
     ld a, [BALL_Y]
@@ -347,10 +386,12 @@ checkBallCollisions:
     ld a, [BALL_Y + OLD_POS_OFFSET]
     ld [BALL_Y], a
 
-    ld a, [BALLVEL_Y]
-    cpl
-    inc a
-    ld [BALLVEL_Y], a
+    call handleBounceCounter
+
+    ;ld a, [BALLVEL_Y]
+    ;cpl
+    ;inc a
+    ;ld [BALLVEL_Y], a
 
     ld a, [BALLVEL_X]
     cpl
@@ -360,14 +401,13 @@ checkBallCollisions:
     ret
 
 .screenCollision:
-
     ; Check if we're hitting the edge of the screen
     ; Left side
     ld a, [BALL_X]
 
     cp 255
     jr nz, .skip
-
+    call playClickSound
     ld a, [BALL_X + OLD_POS_OFFSET]
     ld [BALL_X], a
 
@@ -385,8 +425,7 @@ checkBallCollisions:
     jr c, checkBallCollisionsY
     jr z, checkBallCollisionsY
 
-    ld a, 1
-    ld [$C010], a
+    call playClickSound
 
     ; Greater than
     ld a, [BALL_X + OLD_POS_OFFSET]
@@ -406,6 +445,8 @@ checkBallCollisionsY:
     jr c, .ng
     jr z, .ng
 
+    ;call playClickSound
+
     ; Greater than
     ld a, [BALL_Y + OLD_POS_OFFSET]
     ld [BALL_Y], a
@@ -416,6 +457,56 @@ checkBallCollisionsY:
     inc a
     ld [BALLVEL_Y], a
 .ng:
+    ret
+
+playClickSound:
+    ld a, [GAME_STATE]
+    bit SOUND_PLAYING, a
+    jr z, .play
+    ret
+.play:
+    set SOUND_PLAYING, a
+    ld [GAME_STATE], a
+
+    ; Enable sound system
+    ld a, %10000000
+    ldh [rAUDENA], a
+
+    ; Set up sound registers
+    ld a, %00000000 ; NR10 (no sweep)
+    ldh [rAUD1SWEEP], a
+
+    ld a, %10000001 ; NR11 (50% duty cycle, length=1)
+    ldh [rAUD1LEN], a
+
+    ld a, %11110001 ; NR12 (Initial volume 15, sweep down, sweep step 1)
+    ldh [rAUD1ENV], a
+
+    ld a, %11000000 ; NR13 (frequency low bits)
+    ldh [rAUD1LOW], a
+
+    ld a, %11000111 ; NR14 (trigger, use length, frequency high bits)
+    ldh [rAUD1HIGH], a
+
+    ld a, 4         ; Much shorter timer since sound will stop itself
+    ld [SOUND_TIMER], a
+
+    ret
+
+updateSoundTimer:
+    ld a, [SOUND_TIMER]
+    or a
+    jr z, .noTimer
+
+    dec a
+    ld [SOUND_TIMER], a
+    jr nz, .noTimer
+
+    ld a, [GAME_STATE]
+    res SOUND_PLAYING, a
+    ld [GAME_STATE], a ; Allow sound to play again
+
+.noTimer:
     ret
 
 ; Clamp paddles to ensure that they don't travel too far
@@ -440,6 +531,30 @@ clampPaddle1:
 .padPrev:
     ld a, [PADDLEPOS1 + OLD_POS_OFFSET]
     ld [PADDLEPOS1], a
+.ng:
+    ret
+
+clampPaddle2:
+    ; Clamp first paddle
+    ld a, [PADDLEPOS2]
+
+    ; Top of the screen
+    cp 255
+    jr z, .padPrev
+
+    ; Bottom of the screen
+    add a, PADDLE_HEIGHT
+
+    cp 16
+    jr c, .ng
+    jr z, .ng
+
+    jr .padPrev
+
+    ret
+.padPrev:
+    ld a, [PADDLEPOS2 + OLD_POS_OFFSET]
+    ld [PADDLEPOS2], a
 .ng:
     ret
 
@@ -504,6 +619,36 @@ dPadDown:
 
     ret
 
+aBtn:
+    ld a, [GAME_STATE]
+    bit OPPONENT_MODE, a
+    jr z, .skip
+    ; Human mode is enabled
+    call storeOldPad2Pos
+
+    ld a, [PADDLEPOS2]
+    dec a
+    ld [PADDLEPOS2], a
+
+    call clampPaddle2
+.skip:
+    ret
+
+bBtn:
+    ld a, [GAME_STATE]
+    bit OPPONENT_MODE, a
+    jr z, .skip
+    ; Human mode is enabled
+    call storeOldPad2Pos
+
+    ld a, [PADDLEPOS2]
+    inc a
+    ld [PADDLEPOS2], a
+
+    call clampPaddle2
+.skip:
+    ret
+
 ; All user input
 checkInput:
     ; Read D-pad
@@ -530,6 +675,12 @@ checkInput:
     call z, dPadDown
 
     ; Buttons
+    bit A_BTN, c
+    call z, aBtn
+
+    bit B_BTN, c
+    call z, bBtn
+
     bit START_BTN, c
     call z, startBtn
 
@@ -538,7 +689,6 @@ checkInput:
 
     bit SELECT_BTN, c
     call z, selectBtn
-
 .skip
     ret
 
@@ -711,7 +861,7 @@ drawBall:
 
 updateScreen:
 
-    call clearPaddles ; Clear paddles
+    call clearPaddles
     call clearBall
 
     call drawPaddles

@@ -2,7 +2,7 @@ rgblink = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgb
 rgbfix = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgbfix.exe
 rgbasm = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgbasm.exe
 
-filename = timer
+filename = pong
 
 all: $(filename).gb
 
