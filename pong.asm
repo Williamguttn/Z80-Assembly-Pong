@@ -1,21 +1,7 @@
-; TODO:
-; Draw the ball
-; Make it so that the game starts paused. The menu button (or something else) starts all movements
-; Select button will:
-; 1. Freeze the game (Player has to restart again). Also means reset ball pos and paddle pos
-; 2. Switch between AI and human opponent
-
-; TODO:
-; Add sounds when pressing Start
-; Finish ball y collision
-
-; TODO:
-; Every 2 or 3 collisions with ball, dont flip y velocity? Adds some variety`?
-
 INCLUDE "hardware.inc"
 
 ; Define constants
-DEF PADDLE_HEIGHT EQU 1 ; Amount of tiles that it will stretch out, from the center
+DEF PADDLE_HEIGHT EQU 1 ; Amount of tiles that it will stretch out from the center
 
 ; Game state
 DEF GAME_STATE EQU $C006
@@ -36,6 +22,12 @@ DEF BALLVEL_Y EQU $C005
 DEF BOUNCE_COUNTER EQU $C008
 
 DEF OLD_POS_OFFSET EQU $100
+
+; Points
+DEF PLR1_POINTS EQU $C010
+DEF PLR2_POINTS EQU $C011
+DEF TENS_TILE EQU $C012
+DEF ONES_TILE EQU $C013
 
 ; Tiles
 DEF PADDLE_ONE EQU 0
@@ -93,6 +85,117 @@ opt g.123
     dw `..3333..
 .end:
 
+number_0:
+opt g.123
+    dw `..3333..
+    dw `.3....3.
+    dw `.3...33.
+    dw `.3..3.3.
+    dw `.3.3..3.
+    dw `.33...3.
+    dw `.3....3.
+    dw `..3333..
+.end:
+number_1:
+opt g.123
+    dw `...33...
+    dw `..333...
+    dw `...33...
+    dw `...33...
+    dw `...33...
+    dw `...33...
+    dw `...33...
+    dw `..3333..
+.end:
+number_2:
+opt g.123
+    dw `..3333..
+    dw `.3....3.
+    dw `......3.
+    dw `.....3..
+    dw `....3...
+    dw `...3....
+    dw `..3.....
+    dw `.333333.
+.end:
+number_3:
+opt g.123
+    dw `..3333..
+    dw `.3....3.
+    dw `......3.
+    dw `....33..
+    dw `....33..
+    dw `......3.
+    dw `.3....3.
+    dw `..3333..
+.end:
+number_4:
+opt g.123
+    dw `....33..
+    dw `...3.3..
+    dw `..3..3..
+    dw `.3...3..
+    dw `.3...3..
+    dw `..33333.
+    dw `.....3..
+    dw `.....3..
+.end:
+number_5:
+opt g.123
+    dw `.333333.
+    dw `.3......
+    dw `.3......
+    dw `.33333..
+    dw `......3.
+    dw `......3.
+    dw `......3.
+    dw `.33333..
+.end:
+number_6:
+opt g.123
+    dw `..3333..
+    dw `.3....3.
+    dw `.3......
+    dw `.3......
+    dw `.33333..
+    dw `.3....3.
+    dw `.3....3.
+    dw `..3333..
+.end:
+number_7:
+opt g.123
+    dw `.333333.
+    dw `......3.
+    dw `......3.
+    dw `.....3..
+    dw `....3...
+    dw `...3....
+    dw `..3.....
+    dw `.3......
+.end:
+number_8:
+opt g.123
+    dw `..3333..
+    dw `.3....3.
+    dw `.3....3.
+    dw `..3333..
+    dw `.3....3.
+    dw `.3....3.
+    dw `.3....3.
+    dw `..3333..
+.end:
+number_9:
+opt g.123
+    dw `..3333..
+    dw `.3....3.
+    dw `.3....3.
+    dw `..33333.
+    dw `......3.
+    dw `......3.
+    dw `.3....3.
+    dw `..3333..
+.end:
+
 blankTile:
     DS 16, 0
 
@@ -140,6 +243,8 @@ prepareData:
 
     xor a
     ld [BOUNCE_COUNTER], a
+    ld [PLR1_POINTS], a
+    ld [PLR2_POINTS], a
 
     ld a, 10
     ld [SOUND_TIMER], a
@@ -165,7 +270,7 @@ loadPalette:
 
 ; HL points to source tile data
 ; BC points to destination in VRAM
-; DE is the size coutner
+; DE is the size counter
 loadTileLoop: ; Takes information from registers and loads it into vram
     ld a, [hl+]
     ld [bc], a
@@ -186,18 +291,56 @@ loadTiles:
 
     ; Load flipped paddle (Tile #1)
     ld hl, paddle2
-    ;ld bc, _VRAM + 16
     ld de, 16
     call loadTileLoop
 
     ; Load blank tiles (Tile #2)
-    ld hl, blankTile ; TODO: Do we need to place _VRAM + 32 in bc?
-    ;ld bc, _VRAM + 32
+    ld hl, blankTile
     ld de, 16
     call loadTileLoop
 
     ; Load ball (Tile #3)
     ld hl, ball
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_0
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_1
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_2
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_3
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_4
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_5
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_6
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_7
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_8
+    ld de, 16
+    call loadTileLoop
+
+    ld hl, number_9
     ld de, 16
     call loadTileLoop
 
@@ -269,6 +412,34 @@ moveAI:
     ld a, [BALL_Y]
     ld [PADDLEPOS2], a
 
+    ret
+
+addPointsPlr1:
+    ld a, [PLR1_POINTS]
+    cp 100
+    jr z, .reset
+
+    inc a
+    ld [PLR1_POINTS], a
+    jr .ret
+.reset
+    xor a
+    ld [PLR1_POINTS], a
+.ret
+    ret
+
+addPointsPlr2:
+    ld a, [PLR2_POINTS]
+    cp 100
+    jr z, .reset
+
+    inc a
+    ld [PLR2_POINTS], a
+    jr .ret
+.reset:
+    xor a
+    ld[PLR2_POINTS], a
+.ret:
     ret
 
 handleBounceCounter: ; This mostly creates an illusion of variety
@@ -343,11 +514,6 @@ checkBallCollisions:
 
     call handleBounceCounter
 
-    ;ld a, [BALLVEL_Y]
-    ;cpl
-    ;inc a
-    ;ld [BALLVEL_Y], a
-
     ld a, [BALLVEL_X]
     cpl
     inc a
@@ -356,7 +522,7 @@ checkBallCollisions:
     ret
 
 .checkPaddle2:
-; Check X
+    ; Check X
     ld a, [BALL_X]
     cp 19
     jr nz, .screenCollision
@@ -388,11 +554,6 @@ checkBallCollisions:
 
     call handleBounceCounter
 
-    ;ld a, [BALLVEL_Y]
-    ;cpl
-    ;inc a
-    ;ld [BALLVEL_Y], a
-
     ld a, [BALLVEL_X]
     cpl
     inc a
@@ -416,10 +577,8 @@ checkBallCollisions:
     inc a
     ld [BALLVEL_X], a
 
+    call addPointsPlr2
 .skip:
-; CHECK: Do we need this here?; CHECK: Do we need this here?; CHECK: Do we need this here?
-; CHECK: Do we need this here?; CHECK: Do we need this here?; CHECK: Do we need this here?
-    ;ld a, [BALL_X] 
 
     cp 19
     jr c, checkBallCollisionsY
@@ -437,6 +596,8 @@ checkBallCollisions:
     inc a
     ld [BALLVEL_X], a
 
+    call addPointsPlr1
+
 checkBallCollisionsY:
 
     ; Bottom
@@ -444,8 +605,6 @@ checkBallCollisionsY:
     cp 17
     jr c, .ng
     jr z, .ng
-
-    ;call playClickSound
 
     ; Greater than
     ld a, [BALL_Y + OLD_POS_OFFSET]
@@ -472,7 +631,6 @@ playClickSound:
     ld a, %10000000
     ldh [rAUDENA], a
 
-    ; Set up sound registers
     ld a, %00000000 ; NR10 (no sweep)
     ldh [rAUD1SWEEP], a
 
@@ -488,7 +646,7 @@ playClickSound:
     ld a, %11000111 ; NR14 (trigger, use length, frequency high bits)
     ldh [rAUD1HIGH], a
 
-    ld a, 4         ; Much shorter timer since sound will stop itself
+    ld a, 4
     ld [SOUND_TIMER], a
 
     ret
@@ -684,12 +842,39 @@ checkInput:
     bit START_BTN, c
     call z, startBtn
 
-    bit START_BTN, c ; TODO!! fix this annoying thing where we have to press start + select
+    bit START_BTN, c
     jr nz, .skip
 
     bit SELECT_BTN, c
     call z, selectBtn
 .skip
+    ret
+
+; Result of convertScore:
+; Reg A holds the tens digit
+; Reg B holds the ones digit
+convertScore:
+    ; A register will hold the score
+    ld b, 10
+
+    ld c, 0
+.convertLoop:
+    sub b
+    jr c, .finishedConvert
+    inc c
+    jr .convertLoop
+.finishedConvert:
+    add b
+    ld b, a
+    ld a, c
+
+    add a, 4; Offset by 4 to match tile indices
+    ld [TENS_TILE], a
+
+    ld a, b
+    add a, 4
+    ld [ONES_TILE], a
+
     ret
 
 multiply32: ; multiply de by 32
@@ -859,6 +1044,34 @@ drawBall:
 
     ret
 
+drawPlr1Points:
+    ld a, [PLR1_POINTS]
+    call convertScore
+   
+    ld hl, _SCRN0 + 2
+    ld a, [TENS_TILE]
+    ld [hl], a
+
+    inc hl
+    ld a, [ONES_TILE]
+    ld [hl], a
+
+    ret
+
+drawPlr2Points:
+    ld a, [PLR2_POINTS]
+    call convertScore
+
+    ld hl, _SCRN0 + 16
+    ld a, [TENS_TILE]
+    ld [hl], a
+    
+    inc hl
+    ld a, [ONES_TILE]
+    ld [hl], a
+
+    ret
+
 updateScreen:
 
     call clearPaddles
@@ -866,5 +1079,7 @@ updateScreen:
 
     call drawPaddles
     call drawBall
+    call drawPlr1Points
+    call drawPlr2Points
 
     ret

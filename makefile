@@ -1,3 +1,4 @@
+# Change these
 rgblink = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgblink.exe
 rgbfix = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgbfix.exe
 rgbasm = E:\"Visual Studio Code"\.vscode\Assembly\Z80\rgbds-0.9.0-rc2-win64\rgbasm.exe
